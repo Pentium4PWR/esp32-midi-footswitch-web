@@ -15,7 +15,10 @@
   <section class="connection-panel">
     <button id="connectBtn">Connect Device</button>
     <button id="disconnectBtn" disabled>Disconnect</button>
+    <button id="loadBtn" disabled>Load Device Config</button>
+    <button id="programBtn" disabled>Program Device</button>
     <div class="status" id="status">Status: Disconnected</div>
+    <div class="status" id="configStatus">Config: none loaded</div>
   </section>
 
   <section class="control-panel">
@@ -69,9 +72,23 @@
       <input id="programInput" type="number" min="0" max="127" value="0" />
     </div>
 
+    <div class="panel-row fields-row hidden" id="toggleSettings">
+      <label class="checkbox-label"><input id="toggleEnabled" type="checkbox" /> Toggle enabled</label>
+      <label for="toggleStageSelect">Toggle stage:</label>
+      <select id="toggleStageSelect">
+        <option value="press_on">ON</option>
+        <option value="press_off">OFF</option>
+      </select>
+    </div>
+
     <div class="panel-row buttons-row">
-      <button id="sendPayloadBtn" disabled>Send Payload</button>
-      <button id="dumpBtn" disabled>Request Dump</button>
+      <button id="addMessageBtn" disabled>Add Message</button>
+    </div>
+
+    <div class="message-list-panel">
+      <h2>Section Messages</h2>
+      <select id="messageList" size="6"></select>
+      <button id="deleteMessageBtn" disabled>Delete Selected</button>
     </div>
   </section>
 

@@ -92,6 +92,24 @@ button:disabled {
   display: none;
 }
 
+.message-list-panel {
+  margin-top: 16px;
+}
+
+.message-list-panel h2 {
+  margin-top: 0;
+}
+
+#messageList {
+  width: 100%;
+  min-height: 160px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #16161d;
+  color: #f8fafc;
+  padding: 10px;
+}
+
 .log-panel h2 {
   margin-top: 0;
   font-size: 1.1rem;

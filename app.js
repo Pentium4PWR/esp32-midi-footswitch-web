@@ -2,8 +2,6 @@ const connectBtn = document.getElementById('connectBtn');
 const disconnectBtn = document.getElementById('disconnectBtn');
 const statusEl = document.getElementById('status');
 const logOutput = document.getElementById('logOutput');
-const sendPayloadBtn = document.getElementById('sendPayloadBtn');
-const dumpBtn = document.getElementById('dumpBtn');
 const messageType = document.getElementById('messageType');
 const ccFields = document.getElementById('ccFields');
 const noteFields = document.getElementById('noteFields');
@@ -16,11 +14,79 @@ const valueInput = document.getElementById('valueInput');
 const noteInput = document.getElementById('noteInput');
 const velocityInput = document.getElementById('velocityInput');
 const programInput = document.getElementById('programInput');
+const loadBtn = document.getElementById('loadBtn');
+const programBtn = document.getElementById('programBtn');
+const addMessageBtn = document.getElementById('addMessageBtn');
+const toggleSettings = document.getElementById('toggleSettings');
+const toggleEnabled = document.getElementById('toggleEnabled');
+const toggleStageSelect = document.getElementById('toggleStageSelect');
+const messageList = document.getElementById('messageList');
+const deleteMessageBtn = document.getElementById('deleteMessageBtn');
+const configStatus = document.getElementById('configStatus');
 
 let port = null;
 let writer = null;
 let reader = null;
+let readableStreamClosed = null;
+let writableStreamClosed = null;
 let keepReading = false;
+let responseListeners = [];
+let deviceConfig = createEmptyConfig();
+let selectedMessageIndex = -1;
+
+function createEmptyConfig() {
+  const buttons = {};
+  for (let i = 1; i <= 6; i += 1) {
+    buttons[String(i)] = {
+      press: [],
+      release: [],
+      toggle: {
+        enabled: false,
+        state: false,
+        press_on: [],
+        press_off: [],
+      },
+    };
+  }
+  return { buttons };
+}
+
+function normalizeConfig(rawConfig) {
+  const config = createEmptyConfig();
+  if (!rawConfig || typeof rawConfig !== 'object') {
+    return config;
+  }
+
+  if (rawConfig.buttons && typeof rawConfig.buttons === 'object') {
+    Object.keys(rawConfig.buttons).forEach((key) => {
+      if (!config.buttons[key]) {
+        return;
+      }
+      const bn = rawConfig.buttons[key];
+      if (Array.isArray(bn.press)) {
+        config.buttons[key].press = bn.press.map((item) => ({ ...item }));
+      }
+      if (Array.isArray(bn.release)) {
+        config.buttons[key].release = bn.release.map((item) => ({ ...item }));
+      }
+      if (bn.toggle && typeof bn.toggle === 'object') {
+        if (typeof bn.toggle.enabled === 'boolean') {
+          config.buttons[key].toggle.enabled = bn.toggle.enabled;
+        }
+        if (typeof bn.toggle.state === 'boolean') {
+          config.buttons[key].toggle.state = bn.toggle.state;
+        }
+        if (Array.isArray(bn.toggle.press_on)) {
+          config.buttons[key].toggle.press_on = bn.toggle.press_on.map((item) => ({ ...item }));
+        }
+        if (Array.isArray(bn.toggle.press_off)) {
+          config.buttons[key].toggle.press_off = bn.toggle.press_off.map((item) => ({ ...item }));
+        }
+      }
+    });
+  }
+  return config;
+}
 
 function log(message) {
   const timestamp = new Date().toLocaleTimeString();
@@ -33,13 +99,7 @@ function updateStatus(text, isError = false) {
   statusEl.style.color = isError ? '#f87171' : '#7dd3fc';
 }
 
-function formatMessagePayload() {
-  const payload = {
-    action: 'set',
-    button: Number(buttonSelect.value),
-    when: whenSelect.value,
-  };
-
+function buildMessageObject() {
   const type = messageType.value;
   const msg = { type, channel: Number(channelInput.value) };
   if (type === 'cc') {
@@ -51,7 +111,17 @@ function formatMessagePayload() {
   } else if (type === 'pc') {
     msg.program = Number(programInput.value);
   }
+  return msg;
+}
 
+function formatMessagePayload() {
+  const payload = {
+    action: 'set',
+    button: Number(buttonSelect.value),
+    when: whenSelect.value,
+  };
+
+  const msg = buildMessageObject();
   if (payload.when === 'toggle') {
     payload.enabled = true;
     payload.messages_on = [msg];
@@ -63,18 +133,173 @@ function formatMessagePayload() {
   return payload;
 }
 
+function formatDisplay(msg) {
+  const t = msg.type || '?';
+  const ch = msg.channel ?? 1;
+  if (t === 'cc') {
+    return `CC ch${ch} ctrl${msg.controller ?? 0} val${msg.value ?? 0}`;
+  }
+  if (t === 'noteOn' || t === 'noteOff') {
+    return `${t} ch${ch} note${msg.note ?? 0} vel${msg.velocity ?? 0}`;
+  }
+  if (t === 'pc') {
+    return `PC ch${ch} prog${msg.program ?? 0}`;
+  }
+  return JSON.stringify(msg);
+}
+
+function getCurrentButtonConfig() {
+  const buttonKey = String(buttonSelect.value);
+  if (!deviceConfig.buttons[buttonKey]) {
+    deviceConfig.buttons[buttonKey] = {
+      press: [],
+      release: [],
+      toggle: { enabled: false, state: false, press_on: [], press_off: [] },
+    };
+  }
+  return deviceConfig.buttons[buttonKey];
+}
+
+function getCurrentSection() {
+  const buttonConfig = getCurrentButtonConfig();
+  const when = whenSelect.value;
+  if (when === 'toggle') {
+    return {
+      when,
+      enabled: buttonConfig.toggle.enabled,
+      stage: toggleStageSelect.value,
+      messages: buttonConfig.toggle[toggleStageSelect.value],
+      toggleConfig: buttonConfig.toggle,
+    };
+  }
+  return {
+    when,
+    enabled: false,
+    messages: buttonConfig[when],
+    toggleConfig: buttonConfig.toggle,
+  };
+}
+
+function updateMessageList() {
+  const section = getCurrentSection();
+  messageList.innerHTML = '';
+  section.messages.forEach((msg, idx) => {
+    const option = document.createElement('option');
+    option.value = String(idx);
+    option.textContent = formatDisplay(msg);
+    messageList.appendChild(option);
+  });
+  deleteMessageBtn.disabled = section.messages.length === 0;
+}
+
+function updateSectionControls() {
+  const section = getCurrentSection();
+  if (whenSelect.value === 'toggle') {
+    toggleSettings.classList.remove('hidden');
+    toggleEnabled.checked = section.enabled;
+  } else {
+    toggleSettings.classList.add('hidden');
+  }
+  updateMessageList();
+}
+
+function updateConfigStatus(message) {
+  configStatus.textContent = `Config: ${message}`;
+}
+
+function setSectionEnabled(enabled) {
+  const section = getCurrentButtonConfig();
+  if (whenSelect.value === 'toggle') {
+    section.toggle.enabled = enabled;
+  }
+}
+
+function addMessageToSection() {
+  const section = getCurrentSection();
+  const msg = buildMessageObject();
+  section.messages.push(msg);
+  updateMessageList();
+}
+
+function deleteSelectedMessage() {
+  const section = getCurrentSection();
+  const selectedIndex = Number(messageList.value);
+  if (Number.isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= section.messages.length) {
+    return;
+  }
+  section.messages.splice(selectedIndex, 1);
+  updateMessageList();
+}
+
+function refreshCurrentSection() {
+  updateSectionControls();
+}
+
+function ensureToggleStageVisibility() {
+  if (whenSelect.value === 'toggle') {
+    toggleStageSelect.parentElement.classList.remove('hidden');
+  } else {
+    toggleStageSelect.parentElement.classList.add('hidden');
+  }
+}
+
+function updateGuiFromConfig() {
+  updateSectionControls();
+}
+
+function ensureDeviceConfigLoaded() {
+  if (!deviceConfig || !deviceConfig.buttons) {
+    deviceConfig = createEmptyConfig();
+  }
+}
+
 function createReader(port) {
   const textDecoder = new TextDecoderStream();
-  const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+  readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
   const reader = textDecoder.readable.getReader();
-  return { reader, readableStreamClosed };
+  return { reader };
 }
 
 async function createWriter(port) {
   const textEncoder = new TextEncoderStream();
-  const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
+  writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
   const writer = textEncoder.writable.getWriter();
-  return { writer, writableStreamClosed };
+  return { writer };
+}
+
+function dispatchResponse(line) {
+  for (let i = 0; i < responseListeners.length; i += 1) {
+    const listener = responseListeners[i];
+    try {
+      if (listener.predicate(line)) {
+        listener.resolve(line);
+        responseListeners.splice(i, 1);
+        i -= 1;
+      }
+    } catch (error) {
+      console.warn('Response listener error', error);
+    }
+  }
+}
+
+function addResponseListener(predicate, timeout = 3000) {
+  return new Promise((resolve, reject) => {
+    const listener = { predicate, resolve, reject };
+    responseListeners.push(listener);
+
+    const timer = setTimeout(() => {
+      const idx = responseListeners.indexOf(listener);
+      if (idx >= 0) {
+        responseListeners.splice(idx, 1);
+      }
+      reject(new Error('Response timeout'));
+    }, timeout);
+
+    listener.resolve = (line) => {
+      clearTimeout(timer);
+      resolve(line);
+    };
+  });
 }
 
 async function readLoop() {
@@ -95,6 +320,7 @@ async function readLoop() {
           buffer = buffer.slice(newlineIndex + 1);
           if (line) {
             log(`RX: ${line}`);
+            dispatchResponse(line);
           }
         }
       }
@@ -116,8 +342,9 @@ async function connect() {
 
     connectBtn.disabled = true;
     disconnectBtn.disabled = false;
-    sendPayloadBtn.disabled = false;
-    dumpBtn.disabled = false;
+    loadBtn.disabled = false;
+    programBtn.disabled = false;
+    addMessageBtn.disabled = false;
     updateStatus('Connected');
     log('Connected to device.');
     readLoop();
@@ -129,24 +356,55 @@ async function connect() {
 
 async function disconnect() {
   keepReading = false;
+  responseListeners.forEach((listener) => listener.reject(new Error('Disconnected')));
+  responseListeners = [];
+
   if (reader) {
     try {
       await reader.cancel();
     } catch (error) {
       console.warn(error);
     }
-    reader.releaseLock();
+    try {
+      reader.releaseLock();
+    } catch (error) {
+      console.warn(error);
+    }
     reader = null;
   }
+
   if (writer) {
     try {
       await writer.close();
     } catch (error) {
       console.warn(error);
     }
-    writer.releaseLock();
+    try {
+      writer.releaseLock();
+    } catch (error) {
+      console.warn(error);
+    }
     writer = null;
   }
+
+  if (readableStreamClosed) {
+    try {
+      await readableStreamClosed.catch(() => {});
+    } catch (error) {
+      console.warn(error);
+    }
+    readableStreamClosed = null;
+  }
+
+  if (writableStreamClosed) {
+    try {
+      await writableStreamClosed.catch(() => {});
+    } catch (error) {
+      console.warn(error);
+    }
+    writableStreamClosed = null;
+  }
+
   if (port) {
     try {
       await port.close();
@@ -157,8 +415,9 @@ async function disconnect() {
   }
   connectBtn.disabled = false;
   disconnectBtn.disabled = true;
-  sendPayloadBtn.disabled = true;
-  dumpBtn.disabled = true;
+  loadBtn.disabled = true;
+  programBtn.disabled = true;
+  addMessageBtn.disabled = true;
   updateStatus('Disconnected');
   log('Disconnected.');
 }
@@ -177,11 +436,119 @@ async function sendPayload(payload) {
   }
 }
 
+async function sendJsonCommand(payload, expectJson = false) {
+  let responsePromise = null;
+  if (expectJson) {
+    responsePromise = addResponseListener((raw) => {
+      const trimmed = raw.trim();
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try {
+          JSON.parse(trimmed);
+          return true;
+        } catch (error) {
+          return false;
+        }
+      }
+      return false;
+    }, 5000);
+  }
+
+  await sendPayload(payload);
+  if (!expectJson) {
+    return null;
+  }
+
+  const line = await responsePromise;
+  try {
+    return JSON.parse(line);
+  } catch (error) {
+    throw new Error(`Failed to parse JSON response: ${error}`);
+  }
+}
+
 async function requestDump() {
   try {
-    await sendPayload({ action: 'dump' });
+    const config = await sendJsonCommand({ action: 'dump' }, true);
+    deviceConfig = normalizeConfig(config);
+    updateConfigStatus('loaded');
+    log('Device configuration loaded.');
+    log(JSON.stringify(config, null, 2));
+    updateGuiFromConfig();
   } catch (error) {
     log(`Dump request failed: ${error}`);
+  }
+}
+
+function buildProgramPayloads() {
+  const payloads = [];
+  for (let button = 1; button <= 6; button += 1) {
+    const buttonKey = String(button);
+    const buttonConfig = deviceConfig.buttons[buttonKey] || {
+      press: [],
+      release: [],
+      toggle: { enabled: false, press_on: [], press_off: [] },
+    };
+
+    if (buttonConfig.press.length > 0) {
+      payloads.push({
+        label: `button ${button} press`,
+        payload: { action: 'set', button, when: 'press', messages: buttonConfig.press },
+      });
+    } else {
+      payloads.push({
+        label: `button ${button} press`,
+        payload: { action: 'clear', button, when: 'press' },
+      });
+    }
+
+    if (buttonConfig.release.length > 0) {
+      payloads.push({
+        label: `button ${button} release`,
+        payload: { action: 'set', button, when: 'release', messages: buttonConfig.release },
+      });
+    } else {
+      payloads.push({
+        label: `button ${button} release`,
+        payload: { action: 'clear', button, when: 'release' },
+      });
+    }
+
+    const shouldSetToggle = buttonConfig.toggle.enabled || buttonConfig.toggle.press_on.length > 0 || buttonConfig.toggle.press_off.length > 0;
+    if (shouldSetToggle) {
+      const togglePayload = { action: 'set', button, when: 'toggle', enabled: buttonConfig.toggle.enabled };
+      if (buttonConfig.toggle.press_on.length > 0) {
+        togglePayload.messages_on = buttonConfig.toggle.press_on;
+      }
+      if (buttonConfig.toggle.press_off.length > 0) {
+        togglePayload.messages_off = buttonConfig.toggle.press_off;
+      }
+      payloads.push({ label: `button ${button} toggle`, payload: togglePayload });
+    } else {
+      payloads.push({
+        label: `button ${button} toggle`,
+        payload: { action: 'clear', button, when: 'toggle' },
+      });
+    }
+  }
+  return payloads;
+}
+
+async function programDevice() {
+  try {
+    const payloads = buildProgramPayloads();
+    updateStatus('Programming...');
+    log('Programming started.');
+    for (const { label, payload } of payloads) {
+      log(`TX ${label}: ${JSON.stringify(payload)}`);
+      await sendPayload(payload);
+      const response = await addResponseListener((raw) => raw.trim().length > 0, 5000);
+      log(`RX ${label}: ${response}`);
+    }
+    updateStatus('Programming complete');
+    log('Programming completed.');
+  } catch (error) {
+    updateStatus('Programming failed', true);
+    log(`Programming error: ${error}`);
   }
 }
 
@@ -194,17 +561,33 @@ function updateFieldsVisibility() {
 
 connectBtn.addEventListener('click', connect);
 disconnectBtn.addEventListener('click', disconnect);
-sendPayloadBtn.addEventListener('click', async () => {
+loadBtn.addEventListener('click', requestDump);
+programBtn.addEventListener('click', programDevice);
+addMessageBtn.addEventListener('click', () => {
   try {
-    const payload = formatMessagePayload();
-    await sendPayload(payload);
+    addMessageToSection();
   } catch (error) {
-    updateStatus('Send failed', true);
+    updateStatus('Add message failed', true);
     log(error.message);
   }
 });
-dumpBtn.addEventListener('click', requestDump);
+deleteMessageBtn.addEventListener('click', deleteSelectedMessage);
 messageType.addEventListener('change', updateFieldsVisibility);
+buttonSelect.addEventListener('change', () => {
+  refreshCurrentSection();
+});
+whenSelect.addEventListener('change', () => {
+  refreshCurrentSection();
+});
+toggleStageSelect.addEventListener('change', () => {
+  refreshCurrentSection();
+});
+toggleEnabled.addEventListener('change', () => {
+  setSectionEnabled(toggleEnabled.checked);
+});
+messageList.addEventListener('change', () => {
+  selectedMessageIndex = Number(messageList.value);
+});
 
 window.addEventListener('beforeunload', async () => {
   if (port) {
@@ -213,3 +596,4 @@ window.addEventListener('beforeunload', async () => {
 });
 
 updateFieldsVisibility();
+updateSectionControls();

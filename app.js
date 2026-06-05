@@ -6,7 +6,7 @@ const messageType = document.getElementById('messageType');
 const ccFields = document.getElementById('ccFields');
 const noteFields = document.getElementById('noteFields');
 const pcFields = document.getElementById('pcFields');
-const buttonSelect = document.getElementById('buttonSelect');
+const buttonTabs = document.getElementById('buttonTabs');
 const whenSelect = document.getElementById('whenSelect');
 const channelInput = document.getElementById('channelInput');
 const controllerInput = document.getElementById('controllerInput');
@@ -23,6 +23,9 @@ const toggleStageSelect = document.getElementById('toggleStageSelect');
 const messageList = document.getElementById('messageList');
 const deleteMessageBtn = document.getElementById('deleteMessageBtn');
 const configStatus = document.getElementById('configStatus');
+const summaryPanel = document.getElementById('summaryPanel');
+
+let selectedButton = '1';
 
 let port = null;
 let writer = null;
@@ -114,10 +117,14 @@ function buildMessageObject() {
   return msg;
 }
 
+function getSelectedButtonKey() {
+  return selectedButton;
+}
+
 function formatMessagePayload() {
   const payload = {
     action: 'set',
-    button: Number(buttonSelect.value),
+    button: Number(getSelectedButtonKey()),
     when: whenSelect.value,
   };
 
@@ -149,7 +156,7 @@ function formatDisplay(msg) {
 }
 
 function getCurrentButtonConfig() {
-  const buttonKey = String(buttonSelect.value);
+  const buttonKey = getSelectedButtonKey();
   if (!deviceConfig.buttons[buttonKey]) {
     deviceConfig.buttons[buttonKey] = {
       press: [],
@@ -207,10 +214,75 @@ function updateConfigStatus(message) {
   configStatus.textContent = `Config: ${message}`;
 }
 
+function markActiveButtonTab(buttonKey) {
+  const tabs = buttonTabs.querySelectorAll('[data-button]');
+  tabs.forEach((tab) => {
+    tab.classList.toggle('active', tab.dataset.button === buttonKey);
+  });
+}
+
+function setSelectedButton(buttonKey) {
+  if (!deviceConfig.buttons[buttonKey]) {
+    deviceConfig.buttons[buttonKey] = {
+      press: [],
+      release: [],
+      toggle: { enabled: false, state: false, press_on: [], press_off: [] },
+    };
+  }
+  selectedButton = buttonKey;
+  markActiveButtonTab(buttonKey);
+  refreshCurrentSection();
+  updateConfigStatus(`button ${buttonKey} selected`);
+}
+
+function formatSectionMessages(messages) {
+  return messages.length > 0 ? messages.map(formatDisplay).join('; ') : 'none';
+}
+
+function renderConfigSummary() {
+  ensureDeviceConfigLoaded();
+  summaryPanel.innerHTML = '';
+  Object.keys(deviceConfig.buttons).forEach((buttonKey) => {
+    const buttonConfig = deviceConfig.buttons[buttonKey];
+    const item = document.createElement('div');
+    item.className = 'summary-item';
+    if (buttonKey === selectedButton) {
+      item.classList.add('selected');
+    }
+
+    const heading = document.createElement('h3');
+    heading.textContent = `Button ${buttonKey}`;
+    const press = document.createElement('p');
+    press.textContent = `Press: ${formatSectionMessages(buttonConfig.press)}`;
+    const release = document.createElement('p');
+    release.textContent = `Release: ${formatSectionMessages(buttonConfig.release)}`;
+    const toggleText = buttonConfig.toggle.enabled ? 'enabled' : 'disabled';
+    const toggleState = typeof buttonConfig.toggle.state === 'boolean' ? ` (${buttonConfig.toggle.state ? 'on' : 'off'})` : '';
+    const toggle = document.createElement('p');
+    toggle.textContent = `Toggle: ${toggleText}${toggleState}`;
+
+    item.append(heading, press, release, toggle);
+
+    if (buttonConfig.toggle.enabled) {
+      const actions = document.createElement('div');
+      actions.className = 'summary-actions';
+      const pressOn = document.createElement('span');
+      pressOn.textContent = `ON: ${formatSectionMessages(buttonConfig.toggle.press_on)}`;
+      const pressOff = document.createElement('span');
+      pressOff.textContent = `OFF: ${formatSectionMessages(buttonConfig.toggle.press_off)}`;
+      actions.append(pressOn, pressOff);
+      item.appendChild(actions);
+    }
+
+    summaryPanel.appendChild(item);
+  });
+}
+
 function setSectionEnabled(enabled) {
   const section = getCurrentButtonConfig();
   if (whenSelect.value === 'toggle') {
     section.toggle.enabled = enabled;
+    renderConfigSummary();
   }
 }
 
@@ -219,6 +291,7 @@ function addMessageToSection() {
   const msg = buildMessageObject();
   section.messages.push(msg);
   updateMessageList();
+  renderConfigSummary();
 }
 
 function deleteSelectedMessage() {
@@ -229,10 +302,12 @@ function deleteSelectedMessage() {
   }
   section.messages.splice(selectedIndex, 1);
   updateMessageList();
+  renderConfigSummary();
 }
 
 function refreshCurrentSection() {
   updateSectionControls();
+  renderConfigSummary();
 }
 
 function ensureToggleStageVisibility() {
@@ -244,7 +319,9 @@ function ensureToggleStageVisibility() {
 }
 
 function updateGuiFromConfig() {
+  markActiveButtonTab(selectedButton);
   updateSectionControls();
+  renderConfigSummary();
 }
 
 function ensureDeviceConfigLoaded() {
@@ -573,15 +650,20 @@ addMessageBtn.addEventListener('click', () => {
 });
 deleteMessageBtn.addEventListener('click', deleteSelectedMessage);
 messageType.addEventListener('change', updateFieldsVisibility);
-buttonSelect.addEventListener('change', () => {
-  refreshCurrentSection();
-});
 whenSelect.addEventListener('change', () => {
   refreshCurrentSection();
 });
 toggleStageSelect.addEventListener('change', () => {
   refreshCurrentSection();
 });
+buttonTabs.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-button]');
+  if (!button) {
+    return;
+  }
+  setSelectedButton(button.dataset.button);
+});
+
 toggleEnabled.addEventListener('change', () => {
   setSectionEnabled(toggleEnabled.checked);
 });
@@ -597,3 +679,4 @@ window.addEventListener('beforeunload', async () => {
 
 updateFieldsVisibility();
 updateSectionControls();
+renderConfigSummary();

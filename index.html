@@ -21,35 +21,35 @@
     <div class="status" id="configStatus">Config: none loaded</div>
   </section>
 
-  <section class="control-panel">
-    <div class="panel-row">
-      <label for="buttonSelect">Button:</label>
-      <select id="buttonSelect">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-      </select>
+  <section class="main-grid">
+    <section class="control-panel">
+      <div class="panel-row button-tabs" id="buttonTabs" role="tablist">
+        <button type="button" data-button="1" class="tab active">Button 1</button>
+        <button type="button" data-button="2" class="tab">Button 2</button>
+        <button type="button" data-button="3" class="tab">Button 3</button>
+        <button type="button" data-button="4" class="tab">Button 4</button>
+        <button type="button" data-button="5" class="tab">Button 5</button>
+        <button type="button" data-button="6" class="tab">Button 6</button>
+      </div>
 
-      <label for="whenSelect">When:</label>
-      <select id="whenSelect">
-        <option value="press">press</option>
-        <option value="release">release</option>
-        <option value="toggle">toggle</option>
-      </select>
-    </div>
+      <div class="panel-row">
+        <label for="whenSelect">Action:</label>
+        <select id="whenSelect">
+          <option value="press">press</option>
+          <option value="release">release</option>
+          <option value="toggle">toggle</option>
+        </select>
+      </div>
 
-    <div class="panel-row">
-      <label for="messageType">Message Type:</label>
-      <select id="messageType">
-        <option value="cc">cc</option>
-        <option value="noteOn">noteOn</option>
-        <option value="noteOff">noteOff</option>
-        <option value="pc">pc</option>
-      </select>
-    </div>
+      <div class="panel-row">
+        <label for="messageType">Message Type:</label>
+        <select id="messageType">
+          <option value="cc">cc</option>
+          <option value="noteOn">noteOn</option>
+          <option value="noteOff">noteOff</option>
+          <option value="pc">pc</option>
+        </select>
+      </div>
 
     <div class="panel-row fields-row" id="ccFields">
       <label for="channelInput">Channel</label>
@@ -83,14 +83,19 @@
 
     <div class="panel-row buttons-row">
       <button id="addMessageBtn" disabled>Add Message</button>
+      <button id="deleteMessageBtn" disabled>Delete Selected Message</button>
     </div>
 
     <div class="message-list-panel">
       <h2>Section Messages</h2>
-      <select id="messageList" size="6"></select>
-      <button id="deleteMessageBtn" disabled>Delete Selected</button>
+      <select id="messageList" size="8"></select>
     </div>
   </section>
+
+  <aside class="summary-panel">
+    <h2>Button Summary</h2>
+    <div id="summaryPanel"></div>
+  </aside>
 
   <section class="log-panel">
     <h2>Device Log</h2>

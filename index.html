@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP32 MIDI Footswitch Programmer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>ESP32 MIDI Footswitch Programmer</h1>
+    <p class="subtitle">Browser UI with Web Serial API</p>
+  </header>
+
+  <section class="connection-panel">
+    <button id="connectBtn">Connect Device</button>
+    <button id="disconnectBtn" disabled>Disconnect</button>
+    <div class="status" id="status">Status: Disconnected</div>
+  </section>
+
+  <section class="control-panel">
+    <div class="panel-row">
+      <label for="buttonSelect">Button:</label>
+      <select id="buttonSelect">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+      </select>
+
+      <label for="whenSelect">When:</label>
+      <select id="whenSelect">
+        <option value="press">press</option>
+        <option value="release">release</option>
+        <option value="toggle">toggle</option>
+      </select>
+    </div>
+
+    <div class="panel-row">
+      <label for="messageType">Message Type:</label>
+      <select id="messageType">
+        <option value="cc">cc</option>
+        <option value="noteOn">noteOn</option>
+        <option value="noteOff">noteOff</option>
+        <option value="pc">pc</option>
+      </select>
+    </div>
+
+    <div class="panel-row fields-row" id="ccFields">
+      <label for="channelInput">Channel</label>
+      <input id="channelInput" type="number" min="1" max="16" value="1" />
+      <label for="controllerInput">Controller</label>
+      <input id="controllerInput" type="number" min="0" max="127" value="0" />
+      <label for="valueInput">Value</label>
+      <input id="valueInput" type="number" min="0" max="127" value="0" />
+    </div>
+
+    <div class="panel-row fields-row hidden" id="noteFields">
+      <label for="noteInput">Note</label>
+      <input id="noteInput" type="number" min="0" max="127" value="0" />
+      <label for="velocityInput">Velocity</label>
+      <input id="velocityInput" type="number" min="0" max="127" value="0" />
+    </div>
+
+    <div class="panel-row fields-row hidden" id="pcFields">
+      <label for="programInput">Program</label>
+      <input id="programInput" type="number" min="0" max="127" value="0" />
+    </div>
+
+    <div class="panel-row buttons-row">
+      <button id="sendPayloadBtn" disabled>Send Payload</button>
+      <button id="dumpBtn" disabled>Request Dump</button>
+    </div>
+  </section>
+
+  <section class="log-panel">
+    <h2>Device Log</h2>
+    <pre id="logOutput" class="log-output"></pre>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

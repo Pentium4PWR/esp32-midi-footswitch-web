@@ -1,0 +1,110 @@
+:root {
+  color-scheme: dark;
+  background: #111;
+  color: #eee;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #27272f 0%, #111 58%);
+}
+
+header {
+  margin-bottom: 24px;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 2.5vw, 3rem);
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: #aaa;
+}
+
+.connection-panel,
+.control-panel,
+.log-panel {
+  background: rgba(25, 25, 31, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.status {
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+.panel-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.fields-row {
+  align-items: center;
+}
+
+label {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+input,
+select,
+button {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #16161d;
+  color: #f8fafc;
+  font-size: 0.95rem;
+}
+
+button {
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hidden {
+  display: none;
+}
+
+.log-panel h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.log-output {
+  min-height: 220px;
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0f1720;
+  color: #d6dee9;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}

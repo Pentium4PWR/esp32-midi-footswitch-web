@@ -13,10 +13,10 @@
   </header>
 
   <section class="connection-panel">
-    <button id="connectBtn">Connect Device</button>
-    <button id="disconnectBtn" disabled>Disconnect</button>
-    <button id="loadBtn" disabled>Load Device Config</button>
-    <button id="programBtn" disabled>Program Device</button>
+    <button id="connectBtn" class="control-action">Connect Device</button>
+    <button id="disconnectBtn" class="control-action" disabled>Disconnect</button>
+    <button id="loadBtn" class="control-action" disabled>Load Device Config</button>
+    <button id="programBtn" class="control-action" disabled>Program Device</button>
     <div class="status" id="status">Status: Disconnected</div>
     <div class="status" id="configStatus">Config: none loaded</div>
   </section>
@@ -24,12 +24,12 @@
   <section class="main-grid">
     <section class="control-panel">
       <div class="panel-row button-tabs" id="buttonTabs" role="tablist">
-        <button type="button" data-button="1" class="tab active">Button 1</button>
-        <button type="button" data-button="2" class="tab">Button 2</button>
-        <button type="button" data-button="3" class="tab">Button 3</button>
-        <button type="button" data-button="4" class="tab">Button 4</button>
-        <button type="button" data-button="5" class="tab">Button 5</button>
-        <button type="button" data-button="6" class="tab">Button 6</button>
+        <button type="button" data-button="1" class="tab active">Footswitch 1</button>
+        <button type="button" data-button="2" class="tab">Footswitch 2</button>
+        <button type="button" data-button="3" class="tab">Footswitch 3</button>
+        <button type="button" data-button="4" class="tab">Footswitch 4</button>
+        <button type="button" data-button="5" class="tab">Footswitch 5</button>
+        <button type="button" data-button="6" class="tab">Footswitch 6</button>
       </div>
 
       <div class="panel-row">
@@ -90,12 +90,11 @@
       <h2>Section Messages</h2>
       <select id="messageList" size="8"></select>
     </div>
-  </section>
 
-  <aside class="summary-panel">
-    <h2>Button Summary</h2>
-    <div id="summaryPanel"></div>
-  </aside>
+    <aside class="summary-panel">
+      <div id="summaryPanel"></div>
+    </aside>
+  </section>
 
   <section class="log-panel">
     <h2>Device Log</h2>

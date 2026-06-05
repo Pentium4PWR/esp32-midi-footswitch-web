@@ -40,6 +40,30 @@ h1 {
   margin-bottom: 20px;
 }
 
+.connection-panel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: center;
+}
+
+.connection-panel .control-action {
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: #16161d;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.connection-panel .control-action:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.connection-panel .control-action:disabled {
+  opacity: 0.45;
+}
+
 .main-grid {
   display: grid;
   gap: 20px;
@@ -151,6 +175,13 @@ button:disabled {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   padding: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-panel > #summaryPanel {
+  display: contents;
 }
 
 .summary-item {

@@ -242,7 +242,8 @@ function formatSectionMessages(messages) {
 function renderConfigSummary() {
   ensureDeviceConfigLoaded();
   summaryPanel.innerHTML = '';
-  Object.keys(deviceConfig.buttons).forEach((buttonKey) => {
+  const order = ['4', '5', '6', '1', '2', '3'];
+  order.forEach((buttonKey) => {
     const buttonConfig = deviceConfig.buttons[buttonKey];
     const item = document.createElement('div');
     item.className = 'summary-item';
@@ -251,7 +252,7 @@ function renderConfigSummary() {
     }
 
     const heading = document.createElement('h3');
-    heading.textContent = `Button ${buttonKey}`;
+    heading.textContent = `Footswitch ${buttonKey}`;
     const press = document.createElement('p');
     press.textContent = `Press: ${formatSectionMessages(buttonConfig.press)}`;
     const release = document.createElement('p');
